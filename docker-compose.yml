@@ -1,0 +1,9 @@
+services:
+  insta-downloader:
+    build: .
+    container_name: insta-downloader
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    volumes:
+      - /tmp/insta-downloads:/tmp/insta-downloads

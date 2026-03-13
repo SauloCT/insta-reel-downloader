@@ -3,6 +3,8 @@ services:
     image: ghcr.io/sauloct/insta-reel-downloader:latest
     container_name: insta-downloader
     restart: unless-stopped
+    volumes:
+      - ./instagram.txt:/app/cookies/instagram.txt:ro
     networks:
       - shared_network
 

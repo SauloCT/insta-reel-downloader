@@ -26,6 +26,7 @@ app.add_middleware(
 
 DOWNLOAD_DIR = "/tmp/insta-downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+COOKIES_FILE = "/app/cookies/instagram.txt"
 
 class DownloadRequest(BaseModel):
     url: str
@@ -42,8 +43,10 @@ def cleanup_file(file_path: str):
 
 async def extract_metadata(url: str):
     """Extracts metadata for a given URL using yt-dlp."""
-    ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True}
-    
+    ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+    if os.path.exists(COOKIES_FILE):
+        ydl_opts["cookiefile"] = COOKIES_FILE
+
     def get_info():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(url, download=False)
@@ -75,13 +78,15 @@ async def extract_metadata(url: str):
 async def run_yt_dlp(url: str, output_path: str):
     """Runs yt-dlp in a separate thread to avoid blocking."""
     ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        'outtmpl': output_path,
-        'merge_output_format': 'mp4',
-        'quiet': True,
-        'no_warnings': True,
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "outtmpl": output_path,
+        "merge_output_format": "mp4",
+        "quiet": True,
+        "no_warnings": True,
     }
-    
+    if os.path.exists(COOKIES_FILE):
+        ydl_opts["cookiefile"] = COOKIES_FILE
+
     def download():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)

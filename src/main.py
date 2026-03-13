@@ -3,7 +3,9 @@ import uuid
 import logging
 import asyncio
 import yt_dlp
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
+from pathlib import Path
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -27,6 +29,7 @@ app.add_middleware(
 DOWNLOAD_DIR = "/tmp/insta-downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 COOKIES_FILE = "/app/cookies/instagram.txt"
+os.makedirs(os.path.dirname(COOKIES_FILE), exist_ok=True)
 
 class DownloadRequest(BaseModel):
     url: str
@@ -154,3 +157,37 @@ async def reel_get(request: Request, url: str = Query(...)):
     metadata = await extract_metadata(url)
     metadata['download_url'] = f'{str(request.base_url)}download?url={url}'
     return metadata
+
+@app.post("/cookies")
+async def upload_cookies(file: UploadFile = File(...)):
+    content = await file.read()
+    if b"instagram.com" not in content:
+        raise HTTPException(status_code=400, detail="Invalid cookies: must contain 'instagram.com'")
+    
+    with open(COOKIES_FILE, "wb") as f:
+        f.write(content)
+    
+    return {"status": "ok", "message": "Cookies updated successfully"}
+
+@app.delete("/cookies")
+async def delete_cookies():
+    if os.path.exists(COOKIES_FILE):
+        os.remove(COOKIES_FILE)
+        return {"status": "ok", "message": "Cookies removed"}
+    raise HTTPException(status_code=404, detail="Cookies file not found")
+
+@app.get("/cookies/status")
+async def get_cookies_status():
+    path = Path(COOKIES_FILE)
+    if path.exists():
+        stats = path.stat()
+        return {
+            "exists": True,
+            "size_bytes": stats.st_size,
+            "modified_at": datetime.fromtimestamp(stats.st_mtime).isoformat()
+        }
+    return {
+        "exists": False,
+        "size_bytes": 0,
+        "modified_at": None
+    }

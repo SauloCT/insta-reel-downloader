@@ -4,8 +4,8 @@ services:
     container_name: insta-downloader
     restart: unless-stopped
     networks:
-      - n8n_default
+      - shared_network
 
 networks:
-  n8n_default:
+  shared_network:
     external: true

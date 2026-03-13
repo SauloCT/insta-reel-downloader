@@ -3,7 +3,7 @@ import uuid
 import logging
 import asyncio
 import yt_dlp
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -39,6 +39,38 @@ def cleanup_file(file_path: str):
             logger.info(f"Cleaned up temporary file: {file_path}")
     except Exception as e:
         logger.error(f"Error cleaning up file {file_path}: {e}")
+
+async def extract_metadata(url: str):
+    """Extracts metadata for a given URL using yt-dlp."""
+    ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True}
+    
+    def get_info():
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(url, download=False)
+
+    loop = asyncio.get_event_loop()
+    try:
+        info = await asyncio.wait_for(loop.run_in_executor(None, get_info), timeout=30.0)
+        return {
+            "id": info.get("id"),
+            "title": info.get("title"),
+            "description": info.get("description"),
+            "uploader": info.get("uploader"),
+            "uploader_url": info.get("uploader_url"),
+            "upload_date": info.get("upload_date"),
+            "duration": info.get("duration"),
+            "view_count": info.get("view_count"),
+            "like_count": info.get("like_count"),
+            "comment_count": info.get("comment_count"),
+            "thumbnail": info.get("thumbnail"),
+            "webpage_url": info.get("webpage_url"),
+            "tags": info.get("tags"),
+        }
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Metadata extraction timed out (30s limit)")
+    except Exception as e:
+        logger.error(f"yt-dlp metadata extraction error: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to extract metadata: {str(e)}")
 
 async def run_yt_dlp(url: str, output_path: str):
     """Runs yt-dlp in a separate thread to avoid blocking."""
@@ -107,3 +139,13 @@ async def download_get(background_tasks: BackgroundTasks, url: str = Query(...))
 @app.post("/download")
 async def download_post(request: DownloadRequest, background_tasks: BackgroundTasks):
     return await handle_download(request.url, background_tasks)
+
+@app.get("/info")
+async def info_get(url: str = Query(...)):
+    return await extract_metadata(url)
+
+@app.get("/reel")
+async def reel_get(request: Request, url: str = Query(...)):
+    metadata = await extract_metadata(url)
+    metadata['download_url'] = f'{str(request.base_url)}download?url={url}'
+    return metadata

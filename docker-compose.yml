@@ -1,9 +1,11 @@
 services:
   insta-downloader:
-    build: .
+    image: ghcr.io/sauloct/insta-reel-downloader:latest
     container_name: insta-downloader
-    ports:
-      - "8000:8000"
     restart: unless-stopped
-    volumes:
-      - /tmp/insta-downloads:/tmp/insta-downloads
+    networks:
+      - n8n_default
+
+networks:
+  n8n_default:
+    external: true

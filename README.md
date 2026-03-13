@@ -36,22 +36,34 @@ networks:
 
 | Endpoint | Method | Params / Body | Description |
 | :--- | :--- | :--- | :--- |
-| `/health` | `GET` | - | Health check |
-| `/download` | `GET` | `?url=<URL>` | Download via query param |
-| `/download` | `POST` | `{"url": "<URL>", "quality": "high"}` | Download via JSON body |
+| `/health` | `GET` | - | Health check. Returns `{"status": "ok"}` |
+| `/info` | `GET` | `?url=<URL>` | Returns JSON metadata (id, title, description, uploader, etc.) |
+| `/reel` | `GET` | `?url=<URL>` | Returns metadata plus a ready-to-use `download_url` |
+| `/download` | `GET` | `?url=<URL>` | Returns MP4 file directly |
+| `/download` | `POST` | `{"url": "<URL>", "quality": "best"}` | Returns MP4 file directly |
 
 ### Usage Examples
 
-**GET Request:**
+**Get Info:**
+```bash
+curl "http://localhost:8000/info?url=INSTAGRAM_URL"
+```
+
+**Get Reel Data:**
+```bash
+curl "http://localhost:8000/reel?url=INSTAGRAM_URL"
+```
+
+**Download via GET:**
 ```bash
 curl "http://localhost:8000/download?url=INSTAGRAM_URL" --output video.mp4
 ```
 
-**POST Request:**
+**Download via POST:**
 ```bash
 curl -X POST "http://localhost:8000/download" \
      -H "Content-Type: application/json" \
-     -d '{"url": "INSTAGRAM_URL", "quality": "high"}' \
+     -d '{"url": "INSTAGRAM_URL", "quality": "best"}' \
      --output video.mp4
 ```
 
